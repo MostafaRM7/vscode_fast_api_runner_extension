@@ -1,0 +1,36 @@
+[
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "JSONResponse",
+        "importPath": "fastapi.responses",
+        "description": "fastapi.responses",
+        "isExtraImport": true,
+        "detail": "fastapi.responses",
+        "documentation": {}
+    },
+    {
+        "label": "uvicorn",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "uvicorn",
+        "description": "uvicorn",
+        "detail": "uvicorn",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "example.main",
+        "description": "example.main",
+        "peekOfCode": "app = FastAPI(\n    title=\"Sample FastAPI App\",\n    description=\"A sample FastAPI application for testing the VS Code extension\",\n    version=\"1.0.0\"\n)\n@app.get(\"/\")\nasync def root():\n    \"\"\"Root endpoint\"\"\"\n    return {\"message\": \"Hello World from FastAPI!\", \"status\": \"success\"}\n@app.get(\"/health\")",
+        "detail": "example.main",
+        "documentation": {}
+    }
+]

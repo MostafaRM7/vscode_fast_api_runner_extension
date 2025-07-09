@@ -1,0 +1,187 @@
+{
+  "name": "fastapi-runner",
+  "displayName": "FastAPI Runner",
+  "description": "🚀 One-click FastAPI server management with uvicorn. Start, stop, and restart your FastAPI applications directly from VS Code with auto-reload, virtual environment detection, and configurable settings.",
+  "version": "1.0.2",
+  "publisher": "mostafarm7",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Other",
+    "Debuggers",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "fastapi",
+    "uvicorn",
+    "python",
+    "api",
+    "server",
+    "web",
+    "development",
+    "runner",
+    "auto-reload",
+    "virtual-environment",
+    "venv",
+    "http",
+    "rest",
+    "asgi"
+  ],
+
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/mostafarm7/fastapi-runner",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mostafarm7/fastapi-runner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mostafarm7/fastapi-runner/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Mostafa Kooti",
+    "email": "mostafakooti2018@gmail.com"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "fastapi-runner.start",
+        "title": "Start FastAPI Server",
+        "icon": "$(play)"
+      },
+      {
+        "command": "fastapi-runner.stop",
+        "title": "Stop FastAPI Server",
+        "icon": "$(stop)"
+      },
+      {
+        "command": "fastapi-runner.restart",
+        "title": "Restart FastAPI Server",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "fastapi-runner.selectFile",
+        "title": "Select FastAPI File",
+        "icon": "$(file)"
+      },
+      {
+        "command": "fastapi-runner.createVenv",
+        "title": "Create Virtual Environment",
+        "icon": "$(add)"
+      },
+      {
+        "command": "fastapi-runner.installDependencies",
+        "title": "Install FastAPI Dependencies",
+        "icon": "$(package)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "fastapi-runner.start"
+        },
+        {
+          "command": "fastapi-runner.stop"
+        },
+        {
+          "command": "fastapi-runner.restart"
+        },
+        {
+          "command": "fastapi-runner.selectFile"
+        },
+        {
+          "command": "fastapi-runner.createVenv"
+        },
+        {
+          "command": "fastapi-runner.installDependencies"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "fastapi-runner.start",
+          "when": "resourceExtname == .py",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "FastAPI Runner",
+      "properties": {
+        "fastapi-runner.host": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "Host address for FastAPI server"
+        },
+        "fastapi-runner.port": {
+          "type": "number",
+          "default": 8000,
+          "description": "Port number for FastAPI server"
+        },
+        "fastapi-runner.reload": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable auto-reload for development"
+        },
+        "fastapi-runner.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Path to Python executable"
+        },
+        "fastapi-runner.uvicornPath": {
+          "type": "string",
+          "default": "uvicorn",
+          "description": "Path to uvicorn executable"
+        },
+        "fastapi-runner.defaultFile": {
+          "type": "string",
+          "default": "app:app",
+          "description": "Default FastAPI application module:variable"
+        },
+        "fastapi-runner.autoDetectVenv": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically detect and use virtual environment"
+        },
+        "fastapi-runner.venvPath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom virtual environment path (empty for auto-detection)"
+        },
+        "fastapi-runner.useModuleMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use 'python -m uvicorn' instead of direct uvicorn command"
+        },
+        "fastapi-runner.workingDirectory": {
+          "type": "string",
+          "default": "src",
+          "description": "Working directory for running uvicorn (relative to workspace root, e.g., 'src')"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^16.18.126",
+    "@types/vscode": "^1.60.0",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "tree-kill": "^1.2.2"
+  },
+  "directories": {
+    "example": "example"
+  }
+}
