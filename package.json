@@ -2,8 +2,9 @@
   "name": "fastapi-runner",
   "displayName": "FastAPI Runner",
   "description": "🚀 One-click FastAPI server management with uvicorn. Start, stop, and restart your FastAPI applications directly from VS Code with auto-reload, virtual environment detection, and configurable settings.",
-  "version": "1.0.2",
+  "version": "1.0.11",
   "publisher": "mostafarm7",
+  "icon": "resources/icon.png",
   "engines": {
     "vscode": "^1.60.0"
   },
@@ -33,13 +34,13 @@
     "color": "#1e1e1e",
     "theme": "dark"
   },
-  "homepage": "https://github.com/mostafarm7/fastapi-runner",
+  "homepage": "https://github.com/MostafaRM7/vscode_fast_api_runner_extension",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mostafarm7/fastapi-runner.git"
+    "url": "https://github.com/MostafaRM7/vscode_fast_api_runner_extension.git"
   },
   "bugs": {
-    "url": "https://github.com/mostafarm7/fastapi-runner/issues"
+    "url": "https://github.com/MostafaRM7/vscode_fast_api_runner_extension/issues"
   },
   "license": "MIT",
   "author": {
@@ -178,9 +179,7 @@
     "@types/vscode": "^1.60.0",
     "typescript": "^4.9.5"
   },
-  "dependencies": {
-    "tree-kill": "^1.2.2"
-  },
+  "dependencies": {},
   "directories": {
     "example": "example"
   }

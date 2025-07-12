@@ -199,8 +199,8 @@ Check the "FastAPI Runner" output channel for detailed logs:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd fastapi-runner
+git clone https://github.com/MostafaRM7/vscode_fast_api_runner_extension.git
+cd vscode_fast_api_runner_extension
 
 # Install dependencies
 npm install
@@ -248,9 +248,9 @@ MIT License - see LICENSE file for details
 
 ## Support
 
-- [Report Issues](https://github.com/mostafarm7/fastapi-runner/issues)
-- [Request Features](https://github.com/mostafarm7/fastapi-runner/issues)
-- [Documentation](https://github.com/mostafarm7/fastapi-runner/wiki)
+- [Report Issues](https://github.com/MostafaRM7/vscode_fast_api_runner_extension/issues)
+- [Request Features](https://github.com/MostafaRM7/vscode_fast_api_runner_extension/issues)
+- [Documentation](https://github.com/MostafaRM7/vscode_fast_api_runner_extension)
 
 ---
 

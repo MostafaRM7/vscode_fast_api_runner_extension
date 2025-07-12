@@ -2,95 +2,119 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as kill from 'tree-kill';
 
 let fastApiProcess: cp.ChildProcess | null = null;
 let statusBarItem: vscode.StatusBarItem;
 let outputChannel: vscode.OutputChannel;
 
-export function activate(context: vscode.ExtensionContext) {
-    console.log('⚡ FastAPI Runner extension activate() called!');
-    
-    try {
-        // Create output channel first
-        outputChannel = vscode.window.createOutputChannel('FastAPI Runner');
-        outputChannel.clear();
-        outputChannel.appendLine('🚀 FastAPI Runner extension is starting...');
-        outputChannel.appendLine(`📍 Extension path: ${context.extensionPath}`);
-        outputChannel.appendLine(`📍 VS Code version: ${vscode.version}`);
-        outputChannel.appendLine(`📍 Node version: ${process.version}`);
-        outputChannel.appendLine('─'.repeat(60));
-        
-        // Create status bar item
-        statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-        statusBarItem.text = "$(circle-outline) FastAPI: Stopped";
-        statusBarItem.tooltip = "FastAPI Server Status - Click to start";
-        statusBarItem.command = 'fastapi-runner.start';
-        statusBarItem.show();
-        outputChannel.appendLine('✅ Status bar item created');
+enum LogLevel {
+    INFO = 'INFO',
+    SUCCESS = 'SUCCESS',
+    WARNING = 'WARNING',
+    ERROR = 'ERROR',
+    DEBUG = 'DEBUG'
+}
 
-        // Register commands synchronously to prevent registration issues
-        const disposables: vscode.Disposable[] = [];
-        
-        // Command registration must be synchronous
-        disposables.push(
-            vscode.commands.registerCommand('fastapi-runner.start', startFastAPI),
-            vscode.commands.registerCommand('fastapi-runner.stop', stopFastAPI),
-            vscode.commands.registerCommand('fastapi-runner.restart', restartFastAPI),
-            vscode.commands.registerCommand('fastapi-runner.selectFile', selectFastAPIFile),
-            vscode.commands.registerCommand('fastapi-runner.createVenv', createVirtualEnvironment),
-            vscode.commands.registerCommand('fastapi-runner.installDependencies', installDependencies)
-        );
-
-        outputChannel.appendLine('✅ All commands registered successfully');
-
-        // Add all disposables to context
-        context.subscriptions.push(
-            ...disposables,
-            statusBarItem,
-            outputChannel
-        );
-
-        // Auto-detect FastAPI files asynchronously (non-blocking)
-        setImmediate(() => {
-            try {
-                detectFastAPIFiles();
-            } catch (error) {
-                outputChannel.appendLine(`❌ Error detecting FastAPI files: ${error}`);
-                console.error('Error detecting FastAPI files:', error);
-            }
-        });
-        
-        outputChannel.appendLine('─'.repeat(60));
-        outputChannel.appendLine('🎉 FastAPI Runner extension activated successfully!');
-        outputChannel.appendLine('💡 Available commands:');
-        outputChannel.appendLine('   - FastAPI Runner: Start FastAPI Server');
-        outputChannel.appendLine('   - FastAPI Runner: Stop FastAPI Server');
-        outputChannel.appendLine('   - FastAPI Runner: Restart FastAPI Server');
-        outputChannel.appendLine('   - FastAPI Runner: Select FastAPI File');
-        outputChannel.appendLine('   - FastAPI Runner: Create Virtual Environment');
-        outputChannel.appendLine('   - FastAPI Runner: Install FastAPI Dependencies');
-        
-        console.log('FastAPI Runner extension activated successfully!');
-        
-        // Show success message
-        vscode.window.showInformationMessage('FastAPI Runner extension activated! Commands are ready to use.');
-        
-    } catch (error) {
-        const errorMessage = `Failed to activate FastAPI Runner: ${error}`;
-        console.error('Error activating FastAPI Runner extension:', error);
-        
-        if (outputChannel) {
-            outputChannel.appendLine(`❌ FATAL ERROR: ${errorMessage}`);
-            outputChannel.appendLine(`Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
-            outputChannel.show();
-        }
-        
-        vscode.window.showErrorMessage(errorMessage + ' - Check Output panel for details');
-        
-        // Don't re-throw to prevent VS Code from disabling the extension
-        return;
+class Logger {
+    private static formatTimestamp(): string {
+        const now = new Date();
+        return now.toLocaleTimeString('en-US', { hour12: false });
     }
+
+    private static formatMessage(level: LogLevel, message: string): string {
+        const timestamp = this.formatTimestamp();
+        const prefix = this.getPrefixForLevel(level);
+        return `[${timestamp}] ${prefix} ${message}`;
+    }
+
+    private static getPrefixForLevel(level: LogLevel): string {
+        switch (level) {
+            case LogLevel.INFO:
+                return '[INFO]   ';
+            case LogLevel.SUCCESS:
+                return '[SUCCESS]';
+            case LogLevel.WARNING:
+                return '[WARNING]';
+            case LogLevel.ERROR:
+                return '[ERROR]  ';
+            case LogLevel.DEBUG:
+                return '[DEBUG]  ';
+            default:
+                return '[LOG]    ';
+        }
+    }
+
+    static info(message: string): void {
+        const formattedMessage = this.formatMessage(LogLevel.INFO, message);
+        outputChannel.appendLine(formattedMessage);
+    }
+
+    static success(message: string): void {
+        const formattedMessage = this.formatMessage(LogLevel.SUCCESS, message);
+        outputChannel.appendLine(formattedMessage);
+    }
+
+    static warning(message: string): void {
+        const formattedMessage = this.formatMessage(LogLevel.WARNING, message);
+        outputChannel.appendLine(formattedMessage);
+    }
+
+    static error(message: string): void {
+        const formattedMessage = this.formatMessage(LogLevel.ERROR, message);
+        outputChannel.appendLine(formattedMessage);
+    }
+
+    static debug(message: string): void {
+        const formattedMessage = this.formatMessage(LogLevel.DEBUG, message);
+        outputChannel.appendLine(formattedMessage);
+    }
+
+    static raw(message: string): void {
+        outputChannel.append(message);
+    }
+
+    static clear(): void {
+        outputChannel.clear();
+    }
+
+    static show(): void {
+        outputChannel.show();
+    }
+}
+
+export function activate(context: vscode.ExtensionContext) {
+    // Create output channel
+    outputChannel = vscode.window.createOutputChannel('FastAPI Runner');
+    
+    // Create status bar item
+    statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    statusBarItem.text = "$(circle-outline) FastAPI: Stopped";
+    statusBarItem.tooltip = "FastAPI Server Status";
+    statusBarItem.command = 'fastapi-runner.start';
+    statusBarItem.show();
+    
+    // Register commands
+    const disposables = [
+        vscode.commands.registerCommand('fastapi-runner.start', startFastAPI),
+        vscode.commands.registerCommand('fastapi-runner.stop', stopFastAPI),
+        vscode.commands.registerCommand('fastapi-runner.restart', restartFastAPI),
+        vscode.commands.registerCommand('fastapi-runner.selectFile', selectFastAPIFile),
+        vscode.commands.registerCommand('fastapi-runner.createVenv', createVirtualEnvironment),
+        vscode.commands.registerCommand('fastapi-runner.installDependencies', installDependencies),
+        statusBarItem,
+        outputChannel
+    ];
+    
+    context.subscriptions.push(...disposables);
+    
+    // Auto-detect FastAPI files
+    setTimeout(() => {
+        try {
+            detectFastAPIFiles();
+        } catch (error) {
+            // Silent fail
+        }
+    }, 1000);
 }
 
 async function startFastAPI() {
@@ -200,19 +224,18 @@ async function startFastAPI() {
             args.push('--reload');
         }
 
-        outputChannel.clear();
-        outputChannel.show();
-        outputChannel.appendLine(`Starting FastAPI server...`);
+        Logger.clear();
+        Logger.show();
+        Logger.info('Starting FastAPI server...');
         if (venvInfo.venvPath) {
-            outputChannel.appendLine(`Virtual environment detected: ${venvInfo.venvPath}`);
+            Logger.info(`Virtual environment detected: ${venvInfo.venvPath}`);
         }
-        outputChannel.appendLine(`Python path: ${finalPythonPath}`);
-        outputChannel.appendLine(`Working directory: ${workingDir}`);
+        Logger.info(`Python executable: ${finalPythonPath}`);
+        Logger.info(`Working directory: ${workingDir}`);
         if (workingDirectory) {
-            outputChannel.appendLine(`PYTHONPATH: ${workingDir}`);
+            Logger.info(`PYTHONPATH configured: ${workingDir}`);
         }
-        outputChannel.appendLine(`Command: ${command} ${args.join(' ')}`);
-        outputChannel.appendLine('─'.repeat(50));
+        Logger.info(`Executing command: ${command} ${args.join(' ')}`);
 
         // Prepare environment variables
         const envVars: { [key: string]: string } = {
@@ -235,34 +258,38 @@ async function startFastAPI() {
 
         if (fastApiProcess.stdout) {
             fastApiProcess.stdout.on('data', (data) => {
-                outputChannel.append(data.toString());
+                Logger.raw(data.toString());
             });
         }
 
         if (fastApiProcess.stderr) {
             fastApiProcess.stderr.on('data', (data) => {
-                outputChannel.append(data.toString());
+                Logger.raw(data.toString());
             });
         }
 
         fastApiProcess.on('close', (code) => {
-            outputChannel.appendLine(`\nFastAPI server stopped with code ${code}`);
+            if (code === 0) {
+                Logger.success(`Server stopped successfully`);
+            } else {
+                Logger.warning(`Server stopped with exit code ${code}`);
+            }
             fastApiProcess = null;
             updateStatusBar(false);
         });
 
         fastApiProcess.on('error', (error) => {
-            outputChannel.appendLine(`\nError: ${error.message}`);
+            Logger.error(`Failed to start server: ${error.message}`);
             vscode.window.showErrorMessage(`Failed to start FastAPI server: ${error.message}`);
             fastApiProcess = null;
             updateStatusBar(false);
         });
 
         updateStatusBar(true, port);
-        vscode.window.showInformationMessage(`FastAPI server started on http://${host}:${port}`);
+        vscode.window.showInformationMessage(`🚀 FastAPI server started on http://${host}:${port}`);
 
     } catch (error) {
-        vscode.window.showErrorMessage(`Failed to start FastAPI server: ${error}`);
+        vscode.window.showErrorMessage(`❌ Failed to start FastAPI server: ${error}`);
     }
 }
 
@@ -272,27 +299,29 @@ function stopFastAPI() {
         return;
     }
 
-    outputChannel.appendLine('\nStopping FastAPI server...');
+    Logger.info('Stopping FastAPI server...');
 
     if (fastApiProcess.pid) {
-        kill(fastApiProcess.pid, 'SIGTERM', (error) => {
-            if (error) {
-                outputChannel.appendLine(`Error stopping server: ${error.message}`);
-                // Force kill if SIGTERM fails
-                if (fastApiProcess?.pid) {
-                    try {
-                        process.kill(fastApiProcess.pid, 'SIGKILL');
-                    } catch (killError) {
-                        outputChannel.appendLine(`Force kill failed: ${killError}`);
-                    }
+        try {
+            process.kill(fastApiProcess.pid, 'SIGTERM');
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            Logger.error(`Error stopping server: ${errorMessage}`);
+            // Force kill if SIGTERM fails
+            if (fastApiProcess?.pid) {
+                try {
+                    process.kill(fastApiProcess.pid, 'SIGKILL');
+                } catch (killError) {
+                    const killErrorMessage = killError instanceof Error ? killError.message : String(killError);
+                    Logger.warning(`Force kill failed: ${killErrorMessage}`);
                 }
             }
-        });
+        }
     }
 
     fastApiProcess = null;
     updateStatusBar(false);
-    vscode.window.showInformationMessage('FastAPI server stopped');
+    vscode.window.showInformationMessage('🛑 FastAPI server stopped');
 }
 
 async function restartFastAPI() {
@@ -348,12 +377,7 @@ async function selectFastAPIFile() {
         const modulePath = relativePath.replace(/\.py$/, '').replace(/[/\\]/g, '.') + ':app';
         
         await config.update('defaultFile', modulePath, vscode.ConfigurationTarget.Workspace);
-        vscode.window.showInformationMessage(`Selected FastAPI file: ${selectedFile.label}`);
-        
-        outputChannel.appendLine(`Selected FastAPI module: ${modulePath}`);
-        if (workingDirectory) {
-            outputChannel.appendLine(`Working directory: ${workingDirectory}`);
-        }
+        vscode.window.showInformationMessage(`📁 Selected FastAPI file: ${selectedFile.label}`);
     }
 }
 
@@ -427,7 +451,7 @@ async function findPythonFiles(dir: string): Promise<string[]> {
     try {
         walkDir(dir);
     } catch (error) {
-        console.error('Error walking directory:', error);
+        // Silent fail
     }
     
     return files;
@@ -530,7 +554,6 @@ function detectVirtualEnvironment(workspacePath: string): VirtualEnvironmentInfo
 function detectFastAPIFiles() {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
-        outputChannel.appendLine('No workspace folder found. Please open a folder to use FastAPI Runner.');
         return;
     }
 
@@ -542,22 +565,8 @@ function detectFastAPIFiles() {
         path.join(workspaceFolder.uri.fsPath, workingDirectory) : 
         workspaceFolder.uri.fsPath;
 
-    outputChannel.appendLine(`Scanning workspace: ${workspaceFolder.uri.fsPath}`);
-    if (workingDirectory) {
-        outputChannel.appendLine(`Working directory: ${searchDir}`);
-    }
-
-    // Check for virtual environment
-    const venvInfo = detectVirtualEnvironment(workspaceFolder.uri.fsPath);
-    if (venvInfo.venvPath) {
-        outputChannel.appendLine(`✓ Virtual environment detected: ${venvInfo.venvPath}`);
-    } else {
-        outputChannel.appendLine('⚠ No virtual environment detected');
-    }
-
     // Check for common FastAPI files
     const commonFiles = ['main.py', 'app.py', 'server.py'];
-    let fastApiFound = false;
     
     for (const fileName of commonFiles) {
         const filePath = path.join(searchDir, fileName);
@@ -565,25 +574,12 @@ function detectFastAPIFiles() {
             try {
                 const content = fs.readFileSync(filePath, 'utf8');
                 if (content.includes('FastAPI') || content.includes('fastapi')) {
-                    const relativePath = workingDirectory ? 
-                        path.join(workingDirectory, fileName) : 
-                        fileName;
-                    outputChannel.appendLine(`✓ Detected FastAPI file: ${relativePath}`);
-                    fastApiFound = true;
                     break;
                 }
             } catch (error) {
-                outputChannel.appendLine(`⚠ Error reading ${fileName}: ${error}`);
+                // Silent fail
             }
         }
-    }
-    
-    if (!fastApiFound) {
-        const searchLocation = workingDirectory ? 
-            `${workingDirectory}/ (main.py, app.py, server.py)` : 
-            'root directory (main.py, app.py, server.py)';
-        outputChannel.appendLine(`No FastAPI files detected in ${searchLocation}`);
-        outputChannel.appendLine('You can use "Select FastAPI File" command to choose a file manually.');
     }
 }
 
@@ -616,11 +612,10 @@ async function createVirtualEnvironment() {
         }
     }
 
-    outputChannel.clear();
-    outputChannel.show();
-    outputChannel.appendLine(`Creating virtual environment: ${venvName}`);
-    outputChannel.appendLine(`Path: ${venvPath}`);
-    outputChannel.appendLine('─'.repeat(50));
+    Logger.clear();
+    Logger.show();
+    Logger.info(`Creating virtual environment: ${venvName}`);
+    Logger.info(`Target path: ${venvPath}`);
 
     const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
     
@@ -631,17 +626,16 @@ async function createVirtualEnvironment() {
         });
 
         createProcess.stdout?.on('data', (data) => {
-            outputChannel.append(data.toString());
+            Logger.raw(data.toString());
         });
 
         createProcess.stderr?.on('data', (data) => {
-            outputChannel.append(data.toString());
+            Logger.raw(data.toString());
         });
 
         createProcess.on('close', (code) => {
             if (code === 0) {
-                outputChannel.appendLine('\n✓ Virtual environment created successfully!');
-                outputChannel.appendLine(`To activate: source ${venvName}/bin/activate`);
+                Logger.success('Virtual environment created successfully!');
                 vscode.window.showInformationMessage(`Virtual environment '${venvName}' created successfully!`);
                 
                 // Update extension settings to use the new venv
@@ -651,18 +645,18 @@ async function createVirtualEnvironment() {
                 // Refresh the FastAPI detection
                 detectFastAPIFiles();
             } else {
-                outputChannel.appendLine(`\n✗ Failed to create virtual environment (exit code: ${code})`);
+                Logger.error(`Failed to create virtual environment (exit code: ${code})`);
                 vscode.window.showErrorMessage(`Failed to create virtual environment '${venvName}'`);
             }
         });
 
         createProcess.on('error', (error) => {
-            outputChannel.appendLine(`\n✗ Error: ${error.message}`);
+            Logger.error(`Error creating virtual environment: ${error.message}`);
             vscode.window.showErrorMessage(`Error creating virtual environment: ${error.message}`);
         });
 
     } catch (error) {
-        outputChannel.appendLine(`\n✗ Error: ${error}`);
+        Logger.error(`Error creating virtual environment: ${error}`);
         vscode.window.showErrorMessage(`Error creating virtual environment: ${error}`);
     }
 }
@@ -701,12 +695,10 @@ async function installDependencies() {
         path.join(venvInfo.venvPath, process.platform === 'win32' ? 'Scripts/pip.exe' : 'bin/pip') : 
         'pip';
 
-    outputChannel.clear();
-    outputChannel.show();
-    outputChannel.appendLine('Installing FastAPI dependencies...');
-    outputChannel.appendLine(`Virtual environment: ${venvInfo.venvPath}`);
-    outputChannel.appendLine(`Using pip: ${pipPath}`);
-    outputChannel.appendLine('─'.repeat(50));
+    Logger.clear();
+    Logger.show();
+    Logger.info('Installing FastAPI dependencies...');
+    Logger.info(`Using virtual environment: ${venvInfo.venvPath}`);
 
     // Check if requirements.txt exists (first in working directory, then in root)
     const config2 = vscode.workspace.getConfiguration('fastapi-runner');
@@ -735,11 +727,11 @@ async function installDependencies() {
     let installArgs: string[];
 
     if (hasRequirements) {
-        outputChannel.appendLine(`Found requirements.txt: ${requirementsPath}`);
+        Logger.info(`Found requirements.txt: ${requirementsPath}`);
         installCommand = pythonPath;
         installArgs = ['-m', 'pip', 'install', '-r', requirementsPath];
     } else {
-        outputChannel.appendLine('No requirements.txt found, installing basic FastAPI packages...');
+        Logger.info('Installing basic FastAPI packages...');
         installCommand = pythonPath;
         installArgs = ['-m', 'pip', 'install', 'fastapi', 'uvicorn[standard]'];
     }
@@ -751,53 +743,39 @@ async function installDependencies() {
         });
 
         installProcess.stdout?.on('data', (data) => {
-            outputChannel.append(data.toString());
+            Logger.raw(data.toString());
         });
 
         installProcess.stderr?.on('data', (data) => {
-            outputChannel.append(data.toString());
+            Logger.raw(data.toString());
         });
 
         installProcess.on('close', (code) => {
             if (code === 0) {
-                outputChannel.appendLine('\n✓ Dependencies installed successfully!');
+                Logger.success('Dependencies installed successfully!');
                 vscode.window.showInformationMessage('FastAPI dependencies installed successfully!');
                 
                 // Refresh the FastAPI detection
                 detectFastAPIFiles();
             } else {
-                outputChannel.appendLine(`\n✗ Failed to install dependencies (exit code: ${code})`);
+                Logger.error(`Failed to install dependencies (exit code: ${code})`);
                 vscode.window.showErrorMessage('Failed to install dependencies');
             }
         });
 
         installProcess.on('error', (error) => {
-            outputChannel.appendLine(`\n✗ Error: ${error.message}`);
+            Logger.error(`Error installing dependencies: ${error.message}`);
             vscode.window.showErrorMessage(`Error installing dependencies: ${error.message}`);
         });
 
     } catch (error) {
-        outputChannel.appendLine(`\n✗ Error: ${error}`);
+        Logger.error(`Error installing dependencies: ${error}`);
         vscode.window.showErrorMessage(`Error installing dependencies: ${error}`);
     }
 }
 
 export function deactivate() {
-    try {
-        if (fastApiProcess) {
-            stopFastAPI();
-        }
-        
-        if (statusBarItem) {
-            statusBarItem.dispose();
-        }
-        
-        if (outputChannel) {
-            outputChannel.dispose();
-        }
-        
-        console.log('FastAPI Runner extension deactivated successfully!');
-    } catch (error) {
-        console.error('Error deactivating FastAPI Runner extension:', error);
+    if (fastApiProcess) {
+        stopFastAPI();
     }
 } 

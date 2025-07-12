@@ -19,4 +19,9 @@ yarn-error.log*
 .nyc_output
 coverage/**
 dist/**
-build/** 
+build/**
+versions/**
+scripts/**
+VERSION_MANAGEMENT.md
+# Explicitly include resources folder
+!resources/** 
